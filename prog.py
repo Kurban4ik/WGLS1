@@ -8,7 +8,7 @@ from PyQt5.uic import loadUi
 class Main(QDialog):
     def __init__(self):
         super(Main, self).__init__()
-        loadUi('untitled2.ui', self)
+        loadUi('addEditCoffeeForm.ui', self)
         self.pushButton.clicked.connect(self.end)
 
     def end(self):
