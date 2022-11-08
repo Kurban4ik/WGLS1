@@ -2,6 +2,7 @@ import sys
 import threading
 import time
 import traceback
+import datetime
 
 from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -33,37 +34,37 @@ class MainWindow(QMainWindow):
         if self.curport == 'none':
             return
         self.serial.write(b'1')
-        print('вода залита')
+        self.writelog('вода залита')
 
     def trash(self):
         if self.curport == 'none':
             return
         self.serial.write(b'2')
-        print('вода выведена')
+        self.writelog('вода выведена')
 
     def gas(self):
         if self.curport == 'none':
             return
         self.serial.write(b'0')
-        print('газ подкачен')
+        self.writelog('газ подкачен')
 
     def lightup(self):
         if self.curport == 'none':
             return
         self.serial.write(b'3')
         self.serial.write(b'1')
-        print('свет включен')
+        self.writelog('свет включен')
 
     def lightdown(self):
         if self.curport == 'none':
             return
         self.serial.write(b'3')
         self.serial.write(b'0')
-        print('свет выключен')
+        self.writelog('свет выключен')
 
     def schedfunc(self):
         global thr_stop
-        self.w_time.setText()
+        self.w_time.setText('countdown must be here')
         while 1:
             if thr_stop:
                 break
@@ -81,8 +82,10 @@ class MainWindow(QMainWindow):
                 self.alarm.setText('Норма')
             elif data == '2':
                 self.alarm.setText('Мало воды')
+                self.writelog('ОПАСНО - НЕХВАТКА ВОДЫ')
             else:
                 self.alarm.setText('ПЕРЕПОЛНЕНИЕ!')
+                self.writelog('ОПАСНО - ПЕРЕПОЛНЕНИЕ ВОДЫ')
 
     def connect(self):
         if self.ports.currentText() == 'none' or self.curport == self.ports.currentText():
@@ -92,16 +95,28 @@ class MainWindow(QMainWindow):
         self.serial.setPortName(self.ports.currentText())
         self.serial.open(QIODevice.ReadWrite)
         self.serial.write(b'1')
-        print(self.serial.portName())
+        self.food()
+        self.writelog('Подключён порт ' + self.serial.portName())
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.trash()
         global thr_stop
         thr_stop = 1
 
+    log_len = 0
+
+    def writelog(self, txt):
+        self.logtab.addItem(datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S') + ' --> ' + txt)
+        self.log_len += 1
+        if self.log_len > 20:
+            self.logtab.takeItem(0)
+
     def close(self):
+        self.trash()
         self.serial.close()
         self.portlabel.setText(f"Подключенный порт: none")
+        self.curport = 'none'
+        self.writelog('Порт отключён')
 
 
 def excepthook(exc_type, exc_value, exc_tb):
@@ -120,6 +135,6 @@ if __name__ == '__main__':
     schedule.every().day.at("06:30").do(w.lightup)
     schedule.every().day.at("21:00").do(w.lightdown)
     thr = threading.Thread(target=w.schedfunc, name='thr-1')
-    thr.start()
     w.show()
+    thr.start()
     sys.exit(app.exec_())
